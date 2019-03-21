@@ -1,18 +1,11 @@
 #!/bin/bash
 
-# Copyright 2015 The Kubernetes Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+echo "Running startup script"
+export GOOGLE_APPLICATION_CREDENTIALS=/accounts/key.json
+[ -f ${GOOGLE_APPLICATION_CREDENTIALS} ] && echo "Credentials exist." || echo "Credentials does not exist."
+
+echo "Running fuse, bucket is ${BUCKET}"
+gcsfuse -o nonempty ${BUCKET} /exports
 
 function start()
 {
@@ -29,13 +22,16 @@ function start()
     # prepare /etc/exports
     for i in "$@"; do
         # fsid=0: needed for NFSv4
-        # echo "$i *(rw,fsid=0,insecure,no_root_squash)" >> /etc/exports
+        echo "$i *(rw,fsid=0,insecure,no_root_squash)" >> /etc/exports
         if [ -v gid ] ; then
-            chmod 070 $i && chgrp $gid $i
+            chmod 070 $i
+            chgrp $gid $i
         fi
+        # move index.html to here
+        #/bin/cp /tmp/index.html $i/
+        #chmod 644 $i/index.html
         echo "Serving $i"
     done
-    cat /etc/exports.d/* > /etc/exports
 
     # start rpcbind if it is not started yet
     /usr/sbin/rpcinfo 127.0.0.1 > /dev/null; s=$?
@@ -44,14 +40,7 @@ function start()
        /usr/sbin/rpcbind -w
     fi
 
-    mount -t nfsd nfds /proc/fs/nfsd; s=$?
-    if [ $s -ne 0 ]; then
-       echo "FATAL : Unable to mount NFS"
-       echo "> Check that /etc/exports.d/ is mounted and contain informations about NFS exports"
-       echo "> eg: a file with the following content : /exports *(rw,fsid=0,insecure,no_root_squash)"
-       exit 1
-    fi
-
+    mount -t nfsd nfds /proc/fs/nfsd
 
     # -V 3: enable NFSv3
     /usr/sbin/rpc.mountd -N 2 -V 3
@@ -75,6 +64,8 @@ function stop()
     kill $( pidof rpc.mountd )
     umount /proc/fs/nfsd
     echo > /etc/exports
+
+    fusermount -u ${BUCKET}
     exit 0
 }
 
@@ -87,4 +78,3 @@ start "$@"
 while true; do
     sleep 5
 done
-
