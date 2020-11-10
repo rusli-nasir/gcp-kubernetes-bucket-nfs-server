@@ -37,6 +37,10 @@ docker build -t anderselton/nfs-bucket-server:1.0 .
 docker push anderselton/nfs-bucket-server:1.0 .
 ```
 
+Notes
+----
+You can use the `GCSFUSE_PARAMS` environment variable for adding additional parameters to the mounting process.
+
 More Info
 =========
 
