@@ -1,4 +1,8 @@
 FROM centos
+
+RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
+RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.epel.cloud|g' /etc/yum.repos.d/CentOS-Linux-*
+
 RUN yum -y install /usr/bin/ps nfs-utils && yum clean all
 RUN mkdir -p /exports
 ADD setup.sh /usr/local/bin/run_nfs.sh
